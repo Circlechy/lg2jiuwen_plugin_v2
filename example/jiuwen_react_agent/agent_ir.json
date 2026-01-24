@@ -1,0 +1,163 @@
+{
+  "agent": {
+    "name": "Agent",
+    "llm_config": {
+      "model_name": "gpt-4",
+      "temperature": 0.7,
+      "other_params": {}
+    },
+    "tools": [
+      {
+        "name": "calculator",
+        "func_name": "calculator",
+        "description": "用于数学加减乘除计算",
+        "parameters": [
+          {
+            "name": "expression",
+            "type": "str"
+          }
+        ]
+      },
+      {
+        "name": "weather",
+        "func_name": "weather",
+        "description": "按城市+自然语言日期查天气（使用心知天气API）",
+        "parameters": [
+          {
+            "name": "params",
+            "type": "str"
+          }
+        ]
+      }
+    ],
+    "state_fields": [
+      {
+        "name": "input",
+        "type": "str",
+        "default": null
+      },
+      {
+        "name": "thought",
+        "type": "str",
+        "default": null
+      },
+      {
+        "name": "selected_tool",
+        "type": "Optional[str]",
+        "default": null
+      },
+      {
+        "name": "tool_input",
+        "type": "str",
+        "default": null
+      },
+      {
+        "name": "result",
+        "type": "str",
+        "default": null
+      },
+      {
+        "name": "is_end",
+        "type": "bool",
+        "default": null
+      },
+      {
+        "name": "loop_count",
+        "type": "int",
+        "default": null
+      }
+    ]
+  },
+  "workflow": {
+    "entry_node": "think",
+    "state_class_name": "AgentState",
+    "nodes": [
+      {
+        "name": "think",
+        "class_name": "ThinkComp",
+        "inputs": [
+          "input",
+          "loop_count"
+        ],
+        "outputs": [
+          "thought",
+          "loop_count",
+          "tool_input",
+          "selected_tool"
+        ],
+        "conversion_source": "rule",
+        "has_llm": true,
+        "has_tools": false,
+        "docstring": "思考节点：分析问题并选择合适的工具",
+        "converted_body": "content = f'用户问题：{inputs['input']}\\n\\n可用工具：\\n1. Calculator - 用于数学加减乘除计算\\n2. Weather - 用于查询城市天气\\n\\n请分析用户意图，选择合适的工具。\\n返回格式（严格遵守）：\\n工具：<工具名>\\n参数：<工具所需参数>\\n思考：<一句话说明理由>\\n\\n示例1：\\n工具：Calculator\\n参数：100+200\\n思考：用户想计算数学表达式\\n\\n示例2：\\n工具：Weather\\n参数：北京 今天\\n思考：用户想查询天气'\nmessages = [{'role': 'user', 'content': content}]\nresponse = (await self._llm.ainvoke(model_name=self.model_name, messages=messages)).content\nselected_tool = None\ntool_input = ''\nthought = response\nprint('response:', response)\nfor line in response.split('\\n'):\n    line = line.strip()\n    if line.startswith('工具：') or line.startswith('工具:'):\n        selected_tool = line.split('：')[-1].split(':')[-1].strip()\n    elif line.startswith('参数：') or line.startswith('参数:'):\n        tool_input = line.split('：')[-1].split(':')[-1].strip()\n    elif line.startswith('思考：') or line.startswith('思考:'):\n        thought = line.split('：')[-1].split(':')[-1].strip()\nloop_count = inputs.get('loop_count', 0) + 1\nreturn {'thought': thought, 'selected_tool': selected_tool, 'tool_input': tool_input, 'loop_count': loop_count}"
+      },
+      {
+        "name": "select_tool",
+        "class_name": "SelectToolComp",
+        "inputs": [
+          "tool_input",
+          "selected_tool"
+        ],
+        "outputs": [
+          "result"
+        ],
+        "conversion_source": "rule",
+        "has_llm": false,
+        "has_tools": false,
+        "docstring": "工具执行节点：根据选择调用对应工具",
+        "converted_body": "selected_tool = inputs.get('selected_tool')\ntool_input = inputs.get('tool_input', '')\nif not selected_tool or selected_tool not in tool_map:\n    return {'result': f'未知工具：{selected_tool}，可用工具：Calculator, Weather'}\nresult = invoke_tool(selected_tool, tool_input)\nreturn {'result': result}"
+      },
+      {
+        "name": "judge",
+        "class_name": "JudgeComp",
+        "inputs": [
+          "input",
+          "result",
+          "selected_tool"
+        ],
+        "outputs": [
+          "reason",
+          "is_end"
+        ],
+        "conversion_source": "rule",
+        "has_llm": true,
+        "has_tools": false,
+        "docstring": "终止判断节点",
+        "converted_body": "content = f'用户问题：{inputs['input']}\\n使用工具：{inputs.get('selected_tool', '')}\\n工具结果：{inputs.get('result', '')}\\n\\n问题：根据工具结果，是否已经能够回答用户的问题？不能回答需要给出原因\\n返回格式（严格遵守）：\\n结果：True 或 False\\n原因：<一句话说明> （可选，只有结果为False时才给出原因）\\n\\n示例1：\\n结果：True\\n\\n示例2：\\n结果：False\\n原因：天气查询失败，缺失查询日期 \\n\\n示例3：\\n结果：False\\n原因：计算器无法处理该输入，请重新输入\\n\\n'\nmessages = [{'role': 'user', 'content': content}]\nreason = None\nresponse = (((await self._llm.ainvoke(model_name=self.model_name, messages=messages)).content).strip()).lower()\nfor line in response.split('\\n'):\n    line = line.strip()\n    if line.startswith('结果：') or line.startswith('结果:'):\n        res = line.split('：')[-1].split(':')[-1].strip()\n        is_end = res in ('true', 'True', 'yes', '是', '1')\n    if is_end:\n        break\n    if line.startswith('原因：') or line.startswith('原因:'):\n        reason = line.split('：')[-1].split(':')[-1].strip()\n        print(reason)\nreturn {'is_end': is_end, 'reason': reason}"
+      }
+    ],
+    "edges": [
+      {
+        "source": "think",
+        "target": "select_tool",
+        "is_conditional": false,
+        "condition_map": null,
+        "router_name": null
+      },
+      {
+        "source": "select_tool",
+        "target": "judge",
+        "is_conditional": false,
+        "condition_map": null,
+        "router_name": null
+      },
+      {
+        "source": "judge",
+        "target": "",
+        "is_conditional": true,
+        "condition_map": {
+          "end": "end",
+          "think": "think"
+        },
+        "router_name": "judge_router"
+      }
+    ]
+  },
+  "stats": {
+    "rule_count": 3,
+    "ai_count": 0,
+    "total_nodes": 3,
+    "total_edges": 3,
+    "total_tools": 2
+  }
+}

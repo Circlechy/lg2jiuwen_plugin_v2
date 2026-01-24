@@ -1,0 +1,16 @@
+2026-01-24 18:05:42 | common | base.py | 550 | _invoke_task |  | INFO | begin to invoke, input: {'sentence': '明天北京天气'}
+2026-01-24 18:05:50 | common | checkpointer.py | 28 | pre_workflow_execute |  | INFO | workflow: 030ffe77121a4e85bf71faf727ad4082 create or restore checkpoint from session: 5706518bbffb4135b4a923b2892bc635
+2026-01-24 18:05:50 | common | default_model.py | 684 | _build_request_params |  | INFO | Before request openai chat model, request params is ready.
+2026-01-24 18:05:55 | common | checkpointer.py | 58 | post_workflow_execute |  | INFO | clear checkpoint for workflow: 030ffe77121a4e85bf71faf727ad4082 in session: 5706518bbffb4135b4a923b2892bc635
+2026-01-24 18:05:55 | common | checkpointer.py | 68 | post_workflow_execute |  | INFO | clear session: 5706518bbffb4135b4a923b2892bc635
+2026-01-24 18:05:55 | common | manager.py | 60 | stream_output |  | INFO | Received END_FRAME, stopping stream output.
+2026-01-24 18:05:55 | common | emitter.py | 80 | close |  | INFO | StreamQueue closed successfully, timeout: -1
+2026-01-24 18:05:55 | common | base.py | 569 | _invoke_task |  | INFO | end to invoke, results=result={'output': {'date': '明天', 'city': '北京', 'weather': '北京 2026-01-25: -7~-1°C, 白天小雪, 夜间小雪'}} state=<WorkflowExecutionState.COMPLETED: 'COMPLETED'>
+2026-01-24 18:06:19 | common | base.py | 550 | _invoke_task |  | INFO | begin to invoke, input: {'sentence': '明天天气'}
+2026-01-24 18:06:26 | common | checkpointer.py | 28 | pre_workflow_execute |  | INFO | workflow: 09818bda546b4505bfaac4ed2d132782 create or restore checkpoint from session: 666e16075fab47778de68447a7aa4c92
+2026-01-24 18:06:26 | common | default_model.py | 684 | _build_request_params |  | INFO | Before request openai chat model, request params is ready.
+2026-01-24 18:06:30 | common | checkpointer.py | 58 | post_workflow_execute |  | INFO | clear checkpoint for workflow: 09818bda546b4505bfaac4ed2d132782 in session: 666e16075fab47778de68447a7aa4c92
+2026-01-24 18:06:30 | common | checkpointer.py | 68 | post_workflow_execute |  | INFO | clear session: 666e16075fab47778de68447a7aa4c92
+2026-01-24 18:06:30 | common | manager.py | 60 | stream_output |  | INFO | Received END_FRAME, stopping stream output.
+2026-01-24 18:06:30 | common | emitter.py | 80 | close |  | INFO | StreamQueue closed successfully, timeout: -1
+2026-01-24 18:06:30 | common | base.py | 569 | _invoke_task |  | INFO | end to invoke, results=result={'output': {'error': 'ERROR: 缺失城市'}} state=<WorkflowExecutionState.COMPLETED: 'COMPLETED'>

@@ -1,0 +1,123 @@
+{
+  "agent": {
+    "name": "Agent",
+    "llm_config": {
+      "model_name": "glm-4-flash",
+      "temperature": 0.7,
+      "other_params": {
+        "api_key": "a2143076169049208e54a83c9900d084.xyq9uiIZxK9AwWx3",
+        "api_base": "https://open.bigmodel.cn/api/paas/v4/"
+      }
+    },
+    "tools": [
+      {
+        "name": "get_weather",
+        "func_name": "get_weather",
+        "description": "按城市+自然语言日期查天气（使用心知天气API）",
+        "parameters": [
+          {
+            "name": "city",
+            "type": "str"
+          },
+          {
+            "name": "date",
+            "type": "str"
+          }
+        ]
+      }
+    ],
+    "state_fields": [
+      {
+        "name": "sentence",
+        "type": "str",
+        "default": null
+      },
+      {
+        "name": "city",
+        "type": "Optional[str]",
+        "default": null
+      },
+      {
+        "name": "date",
+        "type": "Optional[str]",
+        "default": null
+      },
+      {
+        "name": "weather",
+        "type": "Optional[str]",
+        "default": null
+      },
+      {
+        "name": "error",
+        "type": "Optional[str]",
+        "default": null
+      }
+    ]
+  },
+  "workflow": {
+    "entry_node": "extract",
+    "state_class_name": "AgentState",
+    "nodes": [
+      {
+        "name": "extract",
+        "class_name": "ExtractComp",
+        "inputs": [
+          "sentence"
+        ],
+        "outputs": [
+          "error",
+          "date",
+          "city"
+        ],
+        "conversion_source": "rule",
+        "has_llm": true,
+        "has_tools": false,
+        "docstring": "LLM 提取 city & date，缺一个就报错",
+        "converted_body": "sys_prompt = '用户会输入一句话，请提取“城市”和“日期”。\\n日期可以是：今天、明天、后天 等。\\n如果城市或日期缺失，请只返回 ERROR: 缺失城市 或 ERROR: 缺失日期，不要多余文字。\\n否则返回 JSON: {\"city\": \"城市\", \"date\": \"日期\"}'\nmessages = [{'role': 'system', 'content': sys_prompt}, {'role': 'user', 'content': inputs['sentence']}]\nans = ((await self._llm.ainvoke(model_name=self.model_name, messages=messages)).content).strip()\nprint('llm ans:', ans)\ntry:\n    import json\n    obj = json.loads(ans)\n    city = obj['city']\n    date = obj['date']\nexcept Exception:\n    error = ans\nreturn __COLLECTED_OUTPUTS__"
+      },
+      {
+        "name": "call_weather",
+        "class_name": "CallWeatherComp",
+        "inputs": [
+          "date",
+          "city"
+        ],
+        "outputs": [
+          "error",
+          "weather"
+        ],
+        "conversion_source": "rule",
+        "has_llm": false,
+        "has_tools": true,
+        "docstring": "直接调用天气工具获取结果",
+        "converted_body": "city = inputs.get('city')\ndate = inputs.get('date')\nif not city or not date:\n    error = '缺少城市或日期参数'\n    return __COLLECTED_OUTPUTS__\nresult = get_weather.invoke(inputs={\"city\": city, \"date\": date})\nprint('weather result:', result)\nweather = result\nreturn __COLLECTED_OUTPUTS__"
+      }
+    ],
+    "edges": [
+      {
+        "source": "extract",
+        "target": "",
+        "is_conditional": true,
+        "condition_map": {
+          "call_weather": "call_weather",
+          "end": "end"
+        },
+        "router_name": "extract_router"
+      },
+      {
+        "source": "call_weather",
+        "target": "end",
+        "is_conditional": false,
+        "condition_map": null,
+        "router_name": null
+      }
+    ]
+  },
+  "stats": {
+    "rule_count": 2,
+    "ai_count": 0,
+    "total_nodes": 2,
+    "total_edges": 2,
+    "total_tools": 1
+  }
+}
