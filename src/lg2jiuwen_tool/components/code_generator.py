@@ -72,6 +72,10 @@ class CodeGeneratorComp(WorkflowComponent, ComponentExecutable):
             for tool in agent_ir.tools:
                 sections.append(self._gen_tool(tool))
 
+            # 2.5 生成工具映射和 invoke_tool
+            if agent_ir.tools:
+                sections.append(self._gen_tool_map_and_invoke(agent_ir))
+
             # 3. 生成组件类
             for node in workflow_ir.nodes:
                 sections.append(self._gen_component(node, agent_ir))
@@ -353,16 +357,24 @@ __all__ = [{", ".join(f'"{n.class_name}"' for n in workflow_ir.nodes)}]
             lines.append(self._gen_tool(tool))
             lines.append('')
 
-        # 添加工具相关变量（如 tool_map，从源代码提取）
+        # 添加工具映射变量
+        tool_map_name = agent_ir.tool_map_var_name or "tool_map"
         if agent_ir.tool_related_vars:
-            lines.append('# 工具相关变量')
+            # 使用从源代码提取的工具映射
+            lines.append('# 工具映射')
             for var in agent_ir.tool_related_vars:
                 lines.append(var)
             lines.append('')
+        elif agent_ir.tools:
+            # 自动生成工具映射
+            lines.append('# 工具映射')
+            tool_entries = ', '.join(
+                f'"{t.name}": {t.func_name}' for t in agent_ir.tools
+            )
+            lines.append(f'{tool_map_name} = {{{tool_entries}}}')
+            lines.append('')
 
         # 添加 invoke_tool 辅助函数
-        # 使用从源代码提取的工具映射变量名，默认为 tool_map
-        tool_map_name = agent_ir.tool_map_var_name or "tool_map"
         lines.extend([
             '',
             'def invoke_tool(tool_name: str, arg: str) -> str:',
@@ -1002,6 +1014,48 @@ def {tool.func_name}({func_params_str}) -> str:
 def {tool.func_name}() -> str:
     """{tool.description}"""
 {self._indent(tool.converted_body, 4)}'''
+
+    def _gen_tool_map_and_invoke(self, agent_ir: AgentIR) -> str:
+        """生成工具映射和 invoke_tool 函数（单文件模式）"""
+        lines = []
+        tool_map_name = agent_ir.tool_map_var_name or "tool_map"
+
+        # 生成工具映射
+        if agent_ir.tool_related_vars:
+            lines.append('# 工具映射')
+            for var in agent_ir.tool_related_vars:
+                lines.append(var)
+        elif agent_ir.tools:
+            lines.append('# 工具映射')
+            tool_entries = ', '.join(
+                f'"{t.name}": {t.func_name}' for t in agent_ir.tools
+            )
+            lines.append(f'{tool_map_name} = {{{tool_entries}}}')
+
+        # 生成 invoke_tool 函数
+        lines.extend([
+            '',
+            '',
+            'def invoke_tool(tool_name: str, arg: str) -> str:',
+            '    """',
+            '    调用工具的辅助函数',
+            '',
+            '    openJiuwen 的 @tool 装饰器返回 LocalFunction，',
+            '    需要通过 .invoke(inputs={param_name: arg}) 调用。',
+            '    此函数自动处理参数名映射。',
+            '    """',
+            f'    tool_func = {tool_map_name}.get(tool_name)',
+            '    if tool_func is None:',
+            '        return f"未知工具: {tool_name}"',
+            '    # 获取工具的第一个参数名',
+            '    if hasattr(tool_func, "params") and tool_func.params:',
+            '        param_name = tool_func.params[0].name',
+            '    else:',
+            '        param_name = "input"',
+            '    return tool_func.invoke(inputs={param_name: arg})',
+        ])
+
+        return '\n'.join(lines)
 
     def _gen_component(self, node: WorkflowNodeIR, agent_ir: AgentIR) -> str:
         """生成组件类
