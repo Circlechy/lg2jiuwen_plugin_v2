@@ -1,21 +1,11 @@
 """
-工具定义
+示例工具：天气查询
 """
 
 import httpx
 from langchain_core.tools import tool
 
-from .config import SENIVERSE_API_KEY
-
-
-@tool
-def calculator(expression: str) -> str:
-    """用于数学加减乘除计算"""
-    try:
-        result = eval(expression, {"__builtins__": {}}, {})
-        return str(result)
-    except Exception as e:
-        return f"计算失败：{e}"
+from ..config import SENIVERSE_API_KEY
 
 
 @tool
@@ -48,10 +38,3 @@ def weather(params: str) -> str:
         return f"天气数据解析异常：{e}"
     except Exception as e:
         return f"天气服务异常：{e}"
-
-
-# 工具映射
-tool_map = {
-    "Calculator": calculator,
-    "Weather": weather,
-}

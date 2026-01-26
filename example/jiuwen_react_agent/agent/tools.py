@@ -54,7 +54,7 @@ def weather(params: str) -> str:
     except Exception as e:
         return f'天气服务异常：{e}'
 
-# 工具相关变量
+# 工具映射
 tool_map = {'Calculator': calculator, 'Weather': weather}
 
 

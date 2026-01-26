@@ -28,7 +28,7 @@ def build_agent_workflow() -> Workflow:
     workflow.add_workflow_comp(
         "think",
         ThinkComp(),
-        inputs_schema={"input": "${start.input}", "loop_count": "${start.loop_count}"}
+        inputs_schema={"loop_count": "${start.loop_count}", "input": "${start.input}"}
     )
 
     workflow.add_workflow_comp(
@@ -40,11 +40,11 @@ def build_agent_workflow() -> Workflow:
     workflow.add_workflow_comp(
         "judge",
         JudgeComp(),
-        inputs_schema={"input": "${start.input}", "result": "${select_tool.result}", "selected_tool": "${think.selected_tool}"}
+        inputs_schema={"selected_tool": "${think.selected_tool}", "result": "${select_tool.result}", "input": "${start.input}"}
     )
 
     # 设置终点
-    workflow.set_end_comp("end", End(), inputs_schema={"thought": "${think.thought}", "loop_count": "${think.loop_count}", "tool_input": "${think.tool_input}", "selected_tool": "${think.selected_tool}", "result": "${select_tool.result}", "reason": "${judge.reason}", "is_end": "${judge.is_end}"})
+    workflow.set_end_comp("end", End(), inputs_schema={"tool_input": "${think.tool_input}", "selected_tool": "${think.selected_tool}", "thought": "${think.thought}", "loop_count": "${think.loop_count}", "result": "${select_tool.result}", "is_end": "${judge.is_end}", "reason": "${judge.reason}"})
 
     # 添加连接
     workflow.add_connection("start", "think")

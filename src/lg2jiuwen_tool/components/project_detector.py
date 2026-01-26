@@ -65,11 +65,15 @@ class ProjectDetectorComp(WorkflowComponent, ComponentExecutable):
             raise ValueError(f"路径不存在: {source_path}")
 
     def _scan_python_files(self, directory: str) -> List[str]:
-        """扫描目录下所有 Python 文件"""
+        """扫描目录下所有 Python 文件（包括 __init__.py）"""
         python_files = []
         for root, _, files in os.walk(directory):
             for file in files:
-                if file.endswith(".py") and not file.startswith("__"):
+                # 包含 __init__.py，但排除 __pycache__ 等
+                if file.endswith(".py"):
+                    # 跳过 __pycache__ 目录
+                    if "__pycache__" in root:
+                        continue
                     full_path = os.path.join(root, file)
                     python_files.append(full_path)
         return sorted(python_files)

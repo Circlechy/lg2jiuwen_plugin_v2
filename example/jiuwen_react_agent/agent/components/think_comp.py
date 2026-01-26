@@ -26,10 +26,10 @@ class ThinkComp(WorkflowComponent, ComponentExecutable):
         context: Context
     ) -> Output:
         # 初始化输出变量
-        thought = None
-        loop_count = None
         tool_input = None
         selected_tool = None
+        thought = None
+        loop_count = None
         # 组件逻辑（转换来源: rule）
         content = f'用户问题：{runtime.get_global_state("input")}\n\n可用工具：\n1. Calculator - 用于数学加减乘除计算\n2. Weather - 用于查询城市天气\n\n请分析用户意图，选择合适的工具。\n返回格式（严格遵守）：\n工具：<工具名>\n参数：<工具所需参数>\n思考：<一句话说明理由>\n\n示例1：\n工具：Calculator\n参数：100+200\n思考：用户想计算数学表达式\n\n示例2：\n工具：Weather\n参数：北京 今天\n思考：用户想查询天气'
         messages = [{'role': 'user', 'content': content}]

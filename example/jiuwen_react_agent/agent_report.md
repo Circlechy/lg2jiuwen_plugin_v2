@@ -1,6 +1,6 @@
 # LG2Jiuwen 迁移报告
 
-**生成时间**: 2026-01-24 17:54:02
+**生成时间**: 2026-01-26 19:27:41
 
 ## 概览
 
@@ -23,9 +23,9 @@
 
 | 节点名 | 类名 | 输入 | 输出 | 转换来源 |
 |--------|------|------|------|----------|
-| think | ThinkComp | input, loop_count | thought, loop_count, tool_input, selected_tool | rule |
+| think | ThinkComp | loop_count, input | tool_input, selected_tool, thought, loop_count | rule |
 | select_tool | SelectToolComp | tool_input, selected_tool | result | rule |
-| judge | JudgeComp | input, result, selected_tool | reason, is_end | rule |
+| judge | JudgeComp | selected_tool, result, input | is_end, reason | rule |
 
 ## 边详情
 

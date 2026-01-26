@@ -102,14 +102,14 @@
         "name": "think",
         "class_name": "ThinkComp",
         "inputs": [
-          "input",
-          "loop_count"
+          "loop_count",
+          "input"
         ],
         "outputs": [
-          "thought",
           "tool_input",
-          "loop_count",
-          "selected_tool"
+          "selected_tool",
+          "thought",
+          "loop_count"
         ],
         "conversion_source": "rule",
         "has_llm": true,
@@ -137,13 +137,13 @@
         "name": "judge",
         "class_name": "JudgeComp",
         "inputs": [
-          "input",
+          "selected_tool",
           "result",
-          "selected_tool"
+          "input"
         ],
         "outputs": [
-          "reason",
-          "is_end"
+          "is_end",
+          "reason"
         ],
         "conversion_source": "rule",
         "has_llm": true,

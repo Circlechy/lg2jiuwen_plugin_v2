@@ -323,7 +323,7 @@ class RuleExtractorComp(WorkflowComponent, ComponentExecutable):
                 for target in node.targets:
                     if isinstance(target, ast.Name):
                         # 排除已知的特殊变量
-                        if target.id not in ("workflow", "graph", "llm", "model"):
+                        if target.id not in ("workflow", "graph", "llm", "model", "__all__"):
                             result.global_vars.append(ast.unparse(node))
 
     def _extract_states(self, tree: ast.AST, result: ExtractionResult):
