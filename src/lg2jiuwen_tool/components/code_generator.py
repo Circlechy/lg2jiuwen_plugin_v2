@@ -760,7 +760,7 @@ if __name__ == "__main__":
         workflow_ir: WorkflowIR,
         migration_ir: Optional[MigrationIR]
     ) -> Dict[str, Any]:
-        """序列化 IR 为字典"""
+        """序列化 IR 为字典（完整版本）"""
         return {
             "agent": {
                 "name": agent_ir.name,
@@ -774,11 +774,17 @@ if __name__ == "__main__":
                         "name": t.name,
                         "func_name": t.func_name,
                         "description": t.description,
-                        "parameters": t.parameters
+                        "parameters": t.parameters,
+                        "converted_body": t.converted_body
                     }
                     for t in agent_ir.tools
                 ],
-                "state_fields": agent_ir.state_fields
+                "state_fields": agent_ir.state_fields,
+                "global_vars": agent_ir.global_vars,
+                "tool_related_vars": agent_ir.tool_related_vars,
+                "tool_map_var_name": agent_ir.tool_map_var_name,
+                "initial_inputs": agent_ir.initial_inputs,
+                "example_inputs": agent_ir.example_inputs
             },
             "workflow": {
                 "entry_node": workflow_ir.entry_node,
@@ -802,6 +808,7 @@ if __name__ == "__main__":
                         "source": e.source,
                         "target": e.target,
                         "is_conditional": e.is_conditional,
+                        "condition_func": e.condition_func,
                         "condition_map": e.condition_map,
                         "router_name": e.router_name
                     }

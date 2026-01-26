@@ -353,12 +353,27 @@ class RuleExtractorComp(WorkflowComponent, ComponentExecutable):
 
     def _extract_llm_configs(self, tree: ast.AST, result: ExtractionResult):
         """提取 LLM 配置"""
+        # 先收集全局变量赋值（用于解析变量引用）
+        global_vars_map = self._collect_global_vars_map(tree)
+
         for node in ast.walk(tree):
             if isinstance(node, ast.Assign):
                 if self._is_llm_creation(node.value):
-                    config = self._parse_llm_config(node)
+                    config = self._parse_llm_config(node, global_vars_map)
                     if config:
                         result.llm_configs.append(config)
+
+    def _collect_global_vars_map(self, tree: ast.AST) -> Dict[str, Any]:
+        """收集全局变量映射 {变量名: 值}"""
+        global_vars_map = {}
+        for node in ast.iter_child_nodes(tree):
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        # 只处理简单的常量赋值
+                        if isinstance(node.value, ast.Constant):
+                            global_vars_map[target.id] = node.value.value
+        return global_vars_map
 
     def _is_llm_creation(self, node: ast.AST) -> bool:
         """检查是否为 LLM 创建"""
@@ -370,10 +385,19 @@ class RuleExtractorComp(WorkflowComponent, ComponentExecutable):
                 return func.attr in ("ChatOpenAI", "ChatAnthropic", "ChatModel")
         return False
 
-    def _parse_llm_config(self, node: ast.Assign) -> Optional[LLMConfig]:
-        """解析 LLM 配置"""
+    def _parse_llm_config(
+        self, node: ast.Assign, global_vars_map: Optional[Dict[str, Any]] = None
+    ) -> Optional[LLMConfig]:
+        """解析 LLM 配置
+
+        Args:
+            node: LLM 赋值语句节点
+            global_vars_map: 全局变量映射 {变量名: 值}，用于解析变量引用
+        """
         if not node.targets:
             return None
+
+        global_vars_map = global_vars_map or {}
 
         var_name = ""
         if isinstance(node.targets[0], ast.Name):
@@ -391,22 +415,36 @@ class RuleExtractorComp(WorkflowComponent, ComponentExecutable):
 
         config = LLMConfig(var_name=var_name, model_class=model_class)
 
-        # 解析参数
+        # 解析参数（支持字符串字面量和变量引用）
         for keyword in call.keywords:
+            value = self._resolve_value(keyword.value, global_vars_map)
+
             if keyword.arg == "model" or keyword.arg == "model_name":
-                if isinstance(keyword.value, ast.Constant):
-                    config.model_name = keyword.value.value
+                if value is not None:
+                    config.model_name = value
             elif keyword.arg == "temperature":
-                if isinstance(keyword.value, ast.Constant):
-                    config.temperature = keyword.value.value
+                if value is not None:
+                    config.temperature = value
             elif keyword.arg in ("openai_api_key", "api_key"):
-                if isinstance(keyword.value, ast.Constant):
-                    config.other_params["api_key"] = keyword.value.value
+                if value is not None:
+                    config.other_params["api_key"] = value
             elif keyword.arg in ("openai_api_base", "api_base", "base_url"):
-                if isinstance(keyword.value, ast.Constant):
-                    config.other_params["api_base"] = keyword.value.value
+                if value is not None:
+                    config.other_params["api_base"] = value
 
         return config
+
+    def _resolve_value(
+        self, node: ast.AST, global_vars_map: Dict[str, Any]
+    ) -> Optional[Any]:
+        """解析 AST 节点的值（支持字面量和变量引用）"""
+        # 字符串/数字字面量
+        if isinstance(node, ast.Constant):
+            return node.value
+        # 变量引用 -> 从全局变量映射中查找
+        if isinstance(node, ast.Name):
+            return global_vars_map.get(node.id)
+        return None
 
     def _extract_tools(
         self,
