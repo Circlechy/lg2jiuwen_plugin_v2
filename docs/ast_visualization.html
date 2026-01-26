@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>AST 可视化 - React Agent</title>
+    <style>
+        body { font-family: 'Consolas', 'Monaco', monospace; margin: 20px; background: #1e1e1e; color: #d4d4d4; }
+        h1 { color: #569cd6; border-bottom: 2px solid #569cd6; padding-bottom: 10px; }
+        h2 { color: #4ec9b0; margin-top: 30px; }
+        .tree { margin-left: 20px; }
+        .tree ul { list-style: none; padding-left: 20px; border-left: 1px dashed #444; }
+        .tree li { padding: 4px 0; position: relative; }
+        .tree li::before { content: "├─ "; color: #666; }
+        .tree li:last-child::before { content: "└─ "; }
+        .node-name { color: #dcdcaa; font-weight: bold; }
+        .node-attr { color: #ce9178; }
+        .node-value { color: #b5cea8; }
+        .node-id { color: #9cdcfe; }
+        .collapsible { cursor: pointer; user-select: none; }
+        .collapsible::after { content: " ▼"; font-size: 10px; color: #666; }
+        .collapsed::after { content: " ▶"; }
+        .collapsed + ul { display: none; }
+        .section { background: #252526; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .legend { background: #2d2d2d; padding: 10px; border-radius: 5px; margin-bottom: 20px; }
+        .legend span { margin-right: 20px; }
+    </style>
+</head>
+<body>
+    <h1>🌳 AST 可视化 - React Agent 迁移示例</h1>
+    
+    <div class="legend">
+        <strong>图例：</strong>
+        <span class="node-name">节点类型</span>
+        <span class="node-attr">(属性)</span>
+        <span class="node-id">'标识符'</span>
+        <span class="node-value">值</span>
+    </div>
+
+    <div class="section">
+        <h2>📄 state.py - 状态定义</h2>
+        <div class="tree" id="tree-state"></div>
+    </div>
+
+    <div class="section">
+        <h2>📄 nodes.py - think_node 函数</h2>
+        <div class="tree" id="tree-nodes"></div>
+    </div>
+
+    <div class="section">
+        <h2>📄 graph.py - 图构建</h2>
+        <div class="tree" id="tree-graph"></div>
+    </div>
+
+    <script>
+    const stateData = {"name": "Module", "children": [{"name": "Expr", "children": [{"name": "Constant ('\\n状态定义\\n')"}]}, {"name": "ImportFrom", "children": [{"name": "alias (name='TypedDict')"}, {"name": "alias (name='Optional')"}]}, {"name": "Assign", "children": [{"name": "Name ('MAX_LOOPS')", "children": [{"name": "Store"}]}, {"name": "Constant (3)"}]}, {"name": "ClassDef (name='AgentState')", "children": [{"name": "Name ('TypedDict')", "children": [{"name": "Load"}]}, {"name": "AnnAssign", "children": [{"name": "Name ('input')", "children": [{"name": "Store"}]}, {"name": "Name ('str')", "children": [{"name": "Load"}]}]}, {"name": "AnnAssign", "children": [{"name": "Name ('thought')", "children": [{"name": "Store"}]}, {"name": "Name ('str')", "children": [{"name": "Load"}]}]}, {"name": "AnnAssign", "children": [{"name": "Name ('selected_tool')", "children": [{"name": "Store"}]}, {"name": "Subscript", "children": [{"name": "Name ('Optional')", "children": [{"name": "...", "children": []}]}, {"name": "Name ('str')", "children": [{"name": "...", "children": []}]}, {"name": "Load"}]}]}, {"name": "AnnAssign", "children": [{"name": "Name ('tool_input')", "children": [{"name": "Store"}]}, {"name": "Name ('str')", "children": [{"name": "Load"}]}]}, {"name": "AnnAssign", "children": [{"name": "Name ('result')", "children": [{"name": "Store"}]}, {"name": "Name ('str')", "children": [{"name": "Load"}]}]}, {"name": "AnnAssign", "children": [{"name": "Name ('is_end')", "children": [{"name": "Store"}]}, {"name": "Name ('bool')", "children": [{"name": "Load"}]}]}, {"name": "AnnAssign", "children": [{"name": "Name ('loop_count')", "children": [{"name": "Store"}]}, {"name": "Name ('int')", "children": [{"name": "Load"}]}]}]}]};
+    const nodesData = {"name": "Module", "children": [{"name": "FunctionDef (name='think_node')", "children": [{"name": "arguments", "children": [{"name": "arg (arg='state')"}]}, {"name": "Assign", "children": [{"name": "Name ('content')", "children": [{"name": "Store"}]}, {"name": "JoinedStr", "children": [{"name": "Constant ('问题：')"}, {"name": "FormattedValue", "children": [{"name": "Subscript", "children": [{"name": "...", "children": []}, {"name": "...", "children": []}, {"name": "...", "children": []}]}]}]}]}, {"name": "Assign", "children": [{"name": "Name ('response')", "children": [{"name": "Store"}]}, {"name": "Attribute (.content)", "children": [{"name": "Call", "children": [{"name": "Attribute (.invoke)", "children": [{"name": "...", "children": []}, {"name": "...", "children": []}]}, {"name": "Name ('messages')", "children": [{"name": "...", "children": []}]}]}, {"name": "Load"}]}]}, {"name": "Assign", "children": [{"name": "Name ('loop_count')", "children": [{"name": "Store"}]}, {"name": "BinOp", "children": [{"name": "Call", "children": [{"name": "Attribute (.get)", "children": [{"name": "...", "children": []}, {"name": "...", "children": []}]}, {"name": "Constant ('loop_count')"}, {"name": "Constant (0)"}]}, {"name": "Add"}, {"name": "Constant (1)"}]}]}, {"name": "Return", "children": [{"name": "Dict", "children": [{"name": "Constant ('thought')"}, {"name": "Constant ('loop_count')"}, {"name": "Name ('thought')", "children": [{"name": "Load"}]}, {"name": "Name ('loop_count')", "children": [{"name": "Load"}]}]}]}]}]};
+    const graphData = {"name": "Module", "children": [{"name": "Expr", "children": [{"name": "Call", "children": [{"name": "Attribute (.add_node)", "children": [{"name": "Name ('graph')", "children": [{"name": "Load"}]}, {"name": "Load"}]}, {"name": "Constant ('think')"}, {"name": "Name ('think_node')", "children": [{"name": "Load"}]}]}]}, {"name": "Expr", "children": [{"name": "Call", "children": [{"name": "Attribute (.add_edge)", "children": [{"name": "Name ('graph')", "children": [{"name": "Load"}]}, {"name": "Load"}]}, {"name": "Constant ('think')"}, {"name": "Constant ('select_tool')"}]}]}, {"name": "Expr", "children": [{"name": "Call", "children": [{"name": "Attribute (.add_conditional_edges)", "children": [{"name": "Name ('graph')", "children": [{"name": "Load"}]}, {"name": "Load"}]}, {"name": "Constant ('judge')"}, {"name": "Name ('judge_router')", "children": [{"name": "Load"}]}, {"name": "Dict", "children": [{"name": "Constant ('end')"}, {"name": "Name ('END')", "children": [{"name": "Load"}]}]}]}]}]};
+
+    function renderTree(data, container) {
+        function createNode(item) {
+            const li = document.createElement('li');
+            
+            // 解析节点名称，添加语法高亮
+            let name = item.name;
+            name = name.replace(/^(\w+)/, '<span class="node-name">$1</span>');
+            name = name.replace(/'([^']+)'/g, '<span class="node-id">\'$1\'</span>');
+            name = name.replace(/(\d+)/g, '<span class="node-value">$1</span>');
+            name = name.replace(/(\.\w+)/g, '<span class="node-attr">$1</span>');
+            
+            if (item.children && item.children.length > 0) {
+                const span = document.createElement('span');
+                span.className = 'collapsible';
+                span.innerHTML = name;
+                span.onclick = function() { this.classList.toggle('collapsed'); };
+                li.appendChild(span);
+                
+                const ul = document.createElement('ul');
+                item.children.forEach(child => ul.appendChild(createNode(child)));
+                li.appendChild(ul);
+            } else {
+                li.innerHTML = name;
+            }
+            return li;
+        }
+        
+        const ul = document.createElement('ul');
+        ul.appendChild(createNode(data));
+        container.appendChild(ul);
+    }
+
+    renderTree(stateData, document.getElementById('tree-state'));
+    renderTree(nodesData, document.getElementById('tree-nodes'));
+    renderTree(graphData, document.getElementById('tree-graph'));
+    </script>
+</body>
+</html>
