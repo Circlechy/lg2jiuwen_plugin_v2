@@ -91,9 +91,9 @@ async def migrate_async(
         }
 
         result = await workflow.invoke(inputs, runtime)
-
+        result = result.result
         # 提取结果 - WorkflowOutput 对象需要通过 .output 属性访问
-        output_data = result.output if hasattr(result, 'output') else result
+        output_data = result["output"] if "output" in result else result
         if isinstance(output_data, dict):
             generated_files = output_data.get("generated_files", [])
             report = output_data.get("report", "")
@@ -134,7 +134,7 @@ async def migrate_async(
         )
 
 
-def migrate_new(
+async def migrate_new(
     source_path: str,
     output_dir: str = "./output",
     options: Optional[MigrationOptions] = None,
@@ -152,14 +152,12 @@ def migrate_new(
     Returns:
         MigrationResult: 迁移结果
     """
-    return asyncio.run(
-        migrate_async(source_path, output_dir, options, llm)
-    )
+    return await migrate_async(source_path, output_dir, options, llm)
 
 
 # ==================== 兼容旧版本接口 ====================
 
-def migrate(source_path: str, output_dir: str) -> str:
+async def migrate(source_path: str, output_dir: str) -> str:
     """
     迁移接口（兼容旧版本）
 
@@ -180,7 +178,7 @@ def migrate(source_path: str, output_dir: str) -> str:
     os.makedirs(output_dir, exist_ok=True)
 
     options = MigrationOptions(preserve_comments=True, use_ai=False)
-    result = migrate_new(source_path, output_dir, options)
+    result = await migrate_new(source_path, output_dir, options)
 
     result_file = ""
     for f in result.generated_files:
@@ -201,24 +199,34 @@ def get_file_content(file_path: str) -> str:
 
 
 def run(source_path: str) -> str:
-    """运行 Python 文件"""
-    base_dir = os.getenv("BASE_DIR", "/")
-    source_path = os.path.join(base_dir, source_path.strip(os.path.sep))
-    if not source_path.endswith(".py"):
-        raise ValueError(f"{source_path} must be a python file")
+    """运行指定的Python文件或目录下的main.py文件"""
+    base_dir = os.getenv("BASE_DIR","/")
+    source_path = os.path.join(base_dir,source_path.strip(os.path.sep))
     if not os.path.exists(source_path):
         raise ValueError(f"{source_path} does not exist")
 
-    cmd = f"source {os.path.join(os.getcwd(), '.venv/bin/activate')}"
+    cmd = f"source {os.path.join(os.getcwd(),".venv/bin/activate")}"
     if platform.system().lower() == "windows":
-        cmd = f"{os.path.join(os.getcwd(), '.venv/Scripts/activate.bat')}"
+        cmd = f"{os.path.join(os.getcwd(),".venv/Scripts/activate.bat")}"
+    shell = os.getenv("SHELL",None)
+    if Path(source_path).is_dir():
+        if not os.path.exists(os.path.join(source_path,"main.py")):
+            raise ValueError(f"{source_path} is a directory but does not contain main.py")
+        main_file = os.path.join(source_path,"main.py")
+        result = subprocess.run(
+            f"{cmd} && python {main_file}", shell=True, executable=shell, cwd=source_path, capture_output=True
+        )
+    elif source_path.endswith(".py"):
+        result = subprocess.run(
+            f"{cmd} && python {source_path}",
+            shell=True,
+            executable=shell,
+            cwd=os.path.dirname(source_path),
+            capture_output=True,
+        )
+    else:
+        raise ValueError(f"{source_path} is not a directory or a Python file")
 
-    result = subprocess.run(
-        f"{cmd} && python {source_path}",
-        shell=True,
-        cwd=os.path.dirname(source_path),
-        capture_output=True
-    )
     return result.stdout.decode("utf-8")
 
 
