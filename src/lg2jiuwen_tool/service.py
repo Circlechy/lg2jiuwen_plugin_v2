@@ -91,9 +91,9 @@ async def migrate_async(
         }
 
         result = await workflow.invoke(inputs, runtime)
-
+        result = result.result
         # 提取结果 - WorkflowOutput 对象需要通过 .output 属性访问
-        output_data = result.output if hasattr(result, 'output') else result
+        output_data = result["output"] if "output" in result else result
         if isinstance(output_data, dict):
             generated_files = output_data.get("generated_files", [])
             report = output_data.get("report", "")
@@ -134,7 +134,7 @@ async def migrate_async(
         )
 
 
-def migrate_new(
+async def migrate_new(
     source_path: str,
     output_dir: str = "./output",
     options: Optional[MigrationOptions] = None,
@@ -152,14 +152,12 @@ def migrate_new(
     Returns:
         MigrationResult: 迁移结果
     """
-    return asyncio.run(
-        migrate_async(source_path, output_dir, options, llm)
-    )
+    return await migrate_async(source_path, output_dir, options, llm)
 
 
 # ==================== 兼容旧版本接口 ====================
 
-def migrate(source_path: str, output_dir: str) -> str:
+async def migrate(source_path: str, output_dir: str) -> str:
     """
     迁移接口（兼容旧版本）
 
@@ -180,7 +178,7 @@ def migrate(source_path: str, output_dir: str) -> str:
     os.makedirs(output_dir, exist_ok=True)
 
     options = MigrationOptions(preserve_comments=True, use_ai=False)
-    result = migrate_new(source_path, output_dir, options)
+    result = await migrate_new(source_path, output_dir, options)
 
     result_file = ""
     for f in result.generated_files:
