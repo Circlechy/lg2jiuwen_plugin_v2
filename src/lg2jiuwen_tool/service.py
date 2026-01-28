@@ -201,24 +201,34 @@ def get_file_content(file_path: str) -> str:
 
 
 def run(source_path: str) -> str:
-    """运行 Python 文件"""
-    base_dir = os.getenv("BASE_DIR", "/")
-    source_path = os.path.join(base_dir, source_path.strip(os.path.sep))
-    if not source_path.endswith(".py"):
-        raise ValueError(f"{source_path} must be a python file")
+    """运行指定的Python文件或目录下的main.py文件"""
+    base_dir = os.getenv("BASE_DIR","/")
+    source_path = os.path.join(base_dir,source_path.strip(os.path.sep))
     if not os.path.exists(source_path):
         raise ValueError(f"{source_path} does not exist")
 
-    cmd = f"source {os.path.join(os.getcwd(), '.venv/bin/activate')}"
+    cmd = f"source {os.path.join(os.getcwd(),".venv/bin/activate")}"
     if platform.system().lower() == "windows":
-        cmd = f"{os.path.join(os.getcwd(), '.venv/Scripts/activate.bat')}"
+        cmd = f"{os.path.join(os.getcwd(),".venv/Scripts/activate.bat")}"
+    shell = os.getenv("SHELL",None)
+    if Path(source_path).is_dir():
+        if not os.path.exists(os.path.join(source_path,"main.py")):
+            raise ValueError(f"{source_path} is a directory but does not contain main.py")
+        main_file = os.path.join(source_path,"main.py")
+        result = subprocess.run(
+            f"{cmd} && python {main_file}", shell=True, executable=shell, cwd=source_path, capture_output=True
+        )
+    elif source_path.endswith(".py"):
+        result = subprocess.run(
+            f"{cmd} && python {source_path}",
+            shell=True,
+            executable=shell,
+            cwd=os.path.dirname(source_path),
+            capture_output=True,
+        )
+    else:
+        raise ValueError(f"{source_path} is not a directory or a Python file")
 
-    result = subprocess.run(
-        f"{cmd} && python {source_path}",
-        shell=True,
-        cwd=os.path.dirname(source_path),
-        capture_output=True
-    )
     return result.stdout.decode("utf-8")
 
 
